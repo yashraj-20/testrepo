@@ -2,18 +2,21 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, status
+from fastapi import APIRouter, Depends, Path, Query, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas import TaskCreate, TaskRead, TaskUpdate
+from app.schemas import TaskCreate, TaskPage, TaskRead, TaskUpdate
 from app.services import TaskService
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 DbSession = Annotated[Session, Depends(get_db)]
 TaskId = Annotated[int, Path(ge=1)]
+CompletedFilter = Annotated[bool | None, Query()]
+PageLimit = Annotated[int, Query(ge=1, le=100)]
+PageOffset = Annotated[int, Query(ge=0)]
 
 
 def get_task_service(db: DbSession) -> TaskService:
@@ -28,9 +31,15 @@ def create_task(data: TaskCreate, service: TaskSvc) -> TaskRead:
     return service.create_task(data)
 
 
-@router.get("", response_model=list[TaskRead], summary="List tasks")
-def list_tasks(service: TaskSvc) -> list[TaskRead]:
-    return service.list_tasks()
+@router.get("", response_model=TaskPage, summary="List tasks")
+def list_tasks(
+    service: TaskSvc,
+    completed: CompletedFilter = None,
+    limit: PageLimit = 20,
+    offset: PageOffset = 0,
+) -> TaskPage:
+    items, total = service.list_tasks(completed=completed, limit=limit, offset=offset)
+    return TaskPage(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get(

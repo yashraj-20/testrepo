@@ -43,7 +43,7 @@ def test_create_rejects_long_title(client):
 def test_list_empty(client):
     response = client.get("/tasks")
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json() == {"items": [], "total": 0, "limit": 20, "offset": 0}
 
 
 def test_list_returns_tasks_in_id_order(client):
@@ -51,8 +51,62 @@ def test_list_returns_tasks_in_id_order(client):
     second = client.post("/tasks", json={"title": "Second"}).json()
     response = client.get("/tasks")
     assert response.status_code == 200
-    ids = [item["id"] for item in response.json()]
+    body = response.json()
+    assert body["total"] == 2
+    assert body["limit"] == 20
+    assert body["offset"] == 0
+    ids = [item["id"] for item in body["items"]]
     assert ids == [first["id"], second["id"]]
+
+
+def test_list_paginates(client):
+    ids = []
+    for index in range(5):
+        created = client.post("/tasks", json={"title": f"Task {index}"}).json()
+        ids.append(created["id"])
+
+    first_page = client.get("/tasks", params={"limit": 2, "offset": 0})
+    assert first_page.status_code == 200
+    body = first_page.json()
+    assert body["total"] == 5
+    assert body["limit"] == 2
+    assert body["offset"] == 0
+    assert [item["id"] for item in body["items"]] == ids[:2]
+
+    last_page = client.get("/tasks", params={"limit": 2, "offset": 4})
+    assert last_page.json()["total"] == 5
+    assert [item["id"] for item in last_page.json()["items"]] == [ids[4]]
+
+    past_end = client.get("/tasks", params={"limit": 2, "offset": 10})
+    assert past_end.json()["items"] == []
+    assert past_end.json()["total"] == 5
+
+
+def test_list_filters_by_completed(client):
+    client.post("/tasks", json={"title": "Open", "completed": False})
+    done = client.post("/tasks", json={"title": "Done", "completed": True}).json()
+    also_done = client.post("/tasks", json={"title": "Also done", "completed": True}).json()
+
+    completed = client.get("/tasks", params={"completed": True, "limit": 1})
+    assert completed.status_code == 200
+    body = completed.json()
+    assert body["total"] == 2
+    assert body["limit"] == 1
+    assert [item["id"] for item in body["items"]] == [done["id"]]
+
+    rest = client.get("/tasks", params={"completed": True, "limit": 1, "offset": 1})
+    assert [item["id"] for item in rest.json()["items"]] == [also_done["id"]]
+    assert rest.json()["total"] == 2
+
+    open_tasks = client.get("/tasks", params={"completed": False})
+    assert open_tasks.json()["total"] == 1
+    assert open_tasks.json()["items"][0]["title"] == "Open"
+
+
+def test_list_rejects_invalid_paging(client):
+    assert client.get("/tasks", params={"limit": 0}).status_code == 422
+    assert client.get("/tasks", params={"limit": 101}).status_code == 422
+    assert client.get("/tasks", params={"offset": -1}).status_code == 422
 
 
 def test_get_task(client):
