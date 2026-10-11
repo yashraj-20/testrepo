@@ -65,6 +65,7 @@ app/config.py          environment settings
 app/database.py        engine, session, declarative base
 app/models.py          Task table
 app/schemas.py         Pydantic request and response models
+app/repositories.py    task queries and commits
 app/services.py        create, list, get, update, delete
 app/routers/tasks.py   HTTP routes
 app/main.py            FastAPI app

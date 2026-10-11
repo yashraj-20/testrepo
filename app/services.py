@@ -1,9 +1,7 @@
 """Task use cases."""
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from app.models import Task, utcnow
+from app.repositories import TaskRepository
 from app.schemas import TaskCreate, TaskUpdate
 
 
@@ -14,22 +12,18 @@ class TaskNotFoundError(Exception):
 
 
 class TaskService:
-    def __init__(self, db: Session) -> None:
-        self.db = db
+    def __init__(self, tasks: TaskRepository) -> None:
+        self.tasks = tasks
 
     def create_task(self, data: TaskCreate) -> Task:
         task = Task(title=data.title, description=data.description, completed=data.completed)
-        self.db.add(task)
-        self.db.commit()
-        self.db.refresh(task)
-        return task
+        return self.tasks.add(task)
 
     def list_tasks(self) -> list[Task]:
-        statement = select(Task).order_by(Task.id)
-        return list(self.db.scalars(statement).all())
+        return self.tasks.list_all()
 
     def get_task(self, task_id: int) -> Task:
-        task = self.db.get(Task, task_id)
+        task = self.tasks.get(task_id)
         if task is None:
             raise TaskNotFoundError(task_id)
         return task
@@ -40,11 +34,8 @@ class TaskService:
         for field, value in changes.items():
             setattr(task, field, value)
         task.updated_at = utcnow()
-        self.db.commit()
-        self.db.refresh(task)
-        return task
+        return self.tasks.save(task)
 
     def delete_task(self, task_id: int) -> None:
         task = self.get_task(task_id)
-        self.db.delete(task)
-        self.db.commit()
+        self.tasks.delete(task)
