@@ -85,6 +85,56 @@ def test_update_task(client):
     assert fetched.json()["title"] == "Final"
 
 
+def test_partial_update_completed_keeps_other_fields(client):
+    created = client.post("/tasks", json={"title": "Buy milk", "description": "2%"}).json()
+    response = client.patch(f"/tasks/{created['id']}", json={"completed": True})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["title"] == "Buy milk"
+    assert body["description"] == "2%"
+    assert body["completed"] is True
+    assert body["updated_at"] >= created["updated_at"]
+
+
+def test_partial_update_title_keeps_other_fields(client):
+    created = client.post(
+        "/tasks",
+        json={"title": "Read", "description": "chapter 1", "completed": False},
+    ).json()
+    response = client.patch(f"/tasks/{created['id']}", json={"title": "Read more"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["title"] == "Read more"
+    assert body["description"] == "chapter 1"
+    assert body["completed"] is False
+
+
+def test_partial_update_omitted_description_is_preserved(client):
+    created = client.post(
+        "/tasks",
+        json={"title": "Draft", "description": "notes", "completed": False},
+    ).json()
+    response = client.patch(
+        f"/tasks/{created['id']}",
+        json={"title": "Final", "completed": True},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["title"] == "Final"
+    assert body["description"] == "notes"
+    assert body["completed"] is True
+
+
+def test_explicit_null_description_clears_description(client):
+    created = client.post("/tasks", json={"title": "Keep", "description": "text"}).json()
+    response = client.patch(f"/tasks/{created['id']}", json={"description": None})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["title"] == "Keep"
+    assert body["description"] is None
+    assert body["completed"] is False
+
+
 def test_update_missing_task(client):
     response = client.patch("/tasks/999", json={"title": "Nope"})
     assert response.status_code == 404

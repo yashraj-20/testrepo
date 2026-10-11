@@ -36,8 +36,7 @@ class TaskService:
 
     def update_task(self, task_id: int, data: TaskUpdate) -> Task:
         task = self.get_task(task_id)
-        changes = data.model_dump()
-        for field, value in changes.items():
+        for field, value in data.model_dump(exclude_unset=True).items():
             setattr(task, field, value)
         task.updated_at = utcnow()
         self.db.commit()
