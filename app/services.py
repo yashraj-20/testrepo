@@ -1,6 +1,6 @@
 """Task use cases."""
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Task, utcnow
@@ -24,9 +24,21 @@ class TaskService:
         self.db.refresh(task)
         return task
 
-    def list_tasks(self) -> list[Task]:
-        statement = select(Task).order_by(Task.id)
-        return list(self.db.scalars(statement).all())
+    def list_tasks(
+        self,
+        *,
+        completed: bool | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[Task], int]:
+        statement = select(Task)
+        count_statement = select(func.count()).select_from(Task)
+        if completed is not None:
+            statement = statement.where(Task.completed == completed)
+            count_statement = count_statement.where(Task.completed == completed)
+        total = self.db.scalar(count_statement) or 0
+        statement = statement.order_by(Task.id).offset(offset).limit(limit)
+        return list(self.db.scalars(statement).all()), total
 
     def get_task(self, task_id: int) -> Task:
         task = self.db.get(Task, task_id)

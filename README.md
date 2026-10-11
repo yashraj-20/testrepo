@@ -37,7 +37,7 @@ On startup the app creates the `tasks` table if it does not exist. The default d
 | --- | --- | --- |
 | `GET` | `/health` | Health check |
 | `POST` | `/tasks` | Create a task |
-| `GET` | `/tasks` | List tasks, oldest id first |
+| `GET` | `/tasks` | List tasks, oldest id first. Supports `completed`, `limit`, and `offset`. |
 | `GET` | `/tasks/{id}` | Fetch one task |
 | `PATCH` | `/tasks/{id}` | Update a task |
 | `DELETE` | `/tasks/{id}` | Delete a task |
@@ -49,6 +49,14 @@ Create body:
 ```
 
 `title` is required (1–200 characters). `description` is optional. `completed` defaults to `false`. Unknown tasks return `404` with `{"detail": "Task {id} not found"}`.
+
+List response:
+
+```json
+{"items": [], "total": 0, "limit": 20, "offset": 0}
+```
+
+`limit` defaults to 20 and must be from 1 to 100. `offset` defaults to 0. `total` is the number of tasks after the optional `completed` filter and before paging. `completed=true` or `completed=false` limits the page to that state.
 
 ## Tests
 
