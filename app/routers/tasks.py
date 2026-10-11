@@ -7,6 +7,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.repositories import TaskRepository
 from app.schemas import TaskCreate, TaskRead, TaskUpdate
 from app.services import TaskService
 
@@ -16,8 +17,12 @@ DbSession = Annotated[Session, Depends(get_db)]
 TaskId = Annotated[int, Path(ge=1)]
 
 
-def get_task_service(db: DbSession) -> TaskService:
-    return TaskService(db)
+def get_task_repository(db: DbSession) -> TaskRepository:
+    return TaskRepository(db)
+
+
+def get_task_service(tasks: Annotated[TaskRepository, Depends(get_task_repository)]) -> TaskService:
+    return TaskService(tasks)
 
 
 TaskSvc = Annotated[TaskService, Depends(get_task_service)]
