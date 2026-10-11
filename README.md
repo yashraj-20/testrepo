@@ -39,7 +39,7 @@ On startup the app creates the `tasks` table if it does not exist. The default d
 | `POST` | `/tasks` | Create a task |
 | `GET` | `/tasks` | List tasks, oldest id first |
 | `GET` | `/tasks/{id}` | Fetch one task |
-| `PATCH` | `/tasks/{id}` | Update a task |
+| `PATCH` | `/tasks/{id}` | Update a task. Omitted fields stay unchanged. |
 | `DELETE` | `/tasks/{id}` | Delete a task |
 
 Create body:
@@ -49,6 +49,14 @@ Create body:
 ```
 
 `title` is required (1–200 characters). `description` is optional. `completed` defaults to `false`. Unknown tasks return `404` with `{"detail": "Task {id} not found"}`.
+
+A partial update sends only the fields that should change:
+
+```json
+{"completed": true}
+```
+
+`title` and `description` stay as they were. Send `"description": null` to clear a description.
 
 ## Tests
 
